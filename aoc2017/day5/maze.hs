@@ -1,4 +1,5 @@
-
+#! /usr/bin/env stack
+-- stack --resolver lts-9.14 --install-ghc runghc
 
 data Maze = Maze [Int] Int [Int]
 
