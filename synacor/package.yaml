@@ -27,6 +27,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - containers
     - bytestring
+    - containers
+    - mtl
     - vector

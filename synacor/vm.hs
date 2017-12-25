@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 import Data.Bits ((.&.), (.|.), shiftR, shiftL, complement)
+import qualified Control.Monad.State as S
 import qualified Data.ByteString as BS
 import qualified Data.Char as C
 import qualified Data.Map.Strict as M
@@ -20,10 +21,26 @@ data VM = VM
 
 type Program = V.Vector W.Word16
 
-data ReturnCode
+data VirtualMachine v
   = Halt
   | Error String
-  | Continue VM
+  | Running v (IO ())
+
+instance Functor VirtualMachine where
+  fmap _ Halt = Halt
+  fmap _ (Error e) = Error e
+  fmap f (Running vm m) = Running (f vm) m
+
+instance Monad VirtualMachine where
+  Halt >>= _ = Halt
+  (Error e) >>= _ = Error e
+  s@(Running vm m) >>= f =
+    case f vm of
+      Halt -> Halt
+      Error e -> Error e
+      Running vm2 m2 -> Running vm2 (m >> m2)
+  return v = Running v (return ())
+  fail = Error
 
 newtype Register = Register W.Word16
   deriving (Show, Eq, Ord, P.PrintfArg)
@@ -40,26 +57,8 @@ debug :: IO () -> IO ()
 debug _ = return ()
 -- debug = id
 
-packLittleEndian :: W.Word8 -> W.Word8 -> W.Word16
-packLittleEndian b0 b1 = fromIntegral b0 .|. (fromIntegral b1 `shiftL` 8)
-
-unpackLittleEndian :: W.Word16 -> (W.Word8, W.Word8)
-unpackLittleEndian w = (b0, b1)
-  where
-    b0 = fromIntegral $ w .&. 255
-    b1 = fromIntegral $ (w `shiftR` 8) .&. 255
-
-getNumber :: BS.ByteString -> W.Word16 -> W.Word16
-getNumber program pos = packLittleEndian b0 b1
-  where
-    b0 = BS.index program $ fromIntegral pos
-    b1 = BS.index program $ fromIntegral (pos + 1)
-
-getRegister :: BS.ByteString -> W.Word16 -> Register
-getRegister program pos = Register $ getNumber program pos
-
 -- | Interpret a complete program
-execNextOpCode :: VM -> IO ReturnCode
+execNextOpCode :: VirtualMachine IO
 execNextOpCode VM{ program, mem, pos, stack }
   | pos < 0 || fromIntegral pos >= V.length program = return Halt
   | otherwise = do
@@ -265,10 +264,32 @@ execNextOpCode VM{ program, mem, pos, stack }
         return $ Continue VM{ pos=pos + 3, mem=M.insert a (complement b .&. 32767) mem, program, stack }
       -- rmem: 15 a b
       --   read memory at address <b> and write it to <a>
-      15 -> return $ Error "Unsupported instruction rmem"
+      15 -> do
+        let a = Register $ program V.! (pos + 1)
+        let op1 = program V.! (pos + 2)
+        let b =
+              if op1 >= 32768
+                then M.findWithDefault 0 (Register op1) mem
+                else op1
+        let v = program V.! fromIntegral b
+        debug $ P.printf "rmem a:%d = b:%d->%d\n" a b v
+        return $ Continue VM{ pos=pos + 3, mem=M.insert a v mem, program, stack }
       -- wmem: 16 a b
       --   write the value from <b> into memory at address <a>
-      16 -> return $ Error "Unsupported instruction wmem"
+      16 -> do
+        let op1 = program V.! (pos + 1)
+        let a =
+              if op1 >= 32768
+                then M.findWithDefault 0 (Register op1) mem
+                else op1
+        let op2 = program V.! (pos + 2)
+        let b =
+              if op2 >= 32768
+                then M.findWithDefault 0 (Register op2) mem
+                else op2
+        debug $ P.printf "wmem a:%d = b:%d\n" a b
+        -- return $ Error "Unsupported instruction wmem"
+        return $ Continue VM{ pos=pos + 3, mem, program=program V.// [(fromIntegral a, b)], stack }
       -- call: 17 a
       --   write the address of the next instruction to the stack and jump to <a>
       17 -> do
@@ -309,7 +330,6 @@ execNextOpCode VM{ program, mem, pos, stack }
       21 -> return $ Continue VM { pos=pos + 1, mem, program, stack }
       o -> return $ Error $ "Unknown opcode: " ++ show o
 
-
 -- | Execute one instruction
 run :: Program -> IO ()
 run = go . initVM
@@ -319,7 +339,10 @@ run = go . initVM
       case result of
         Halt -> putStrLn "Program is exiting..."
         Error err -> putStrLn $ "Program errored: " ++ show err
-        Continue vm2 -> go vm2
+        Running vm2 -> go vm2
+
+packLittleEndian :: W.Word8 -> W.Word8 -> W.Word16
+packLittleEndian b0 b1 = fromIntegral b0 .|. (fromIntegral b1 `shiftL` 8)
 
 mkProgram :: BS.ByteString -> Program
 mkProgram bs = V.fromList $ go (BS.unpack bs)
