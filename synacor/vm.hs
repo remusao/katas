@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE StrictData #-}
 
 import Data.Bits ((.&.), (.|.), shiftL, complement)
 import qualified Data.ByteString as BS
@@ -11,7 +11,14 @@ import qualified Data.Vector.Unboxed as V
 import qualified Data.Word as W
 import qualified System.Environment as Env
 import qualified Text.Printf as P
-import qualified Debug.Trace as D
+-- import qualified Debug.Trace as D
+
+
+type Program = V.Vector W.Word16
+
+
+newtype Register = Register { getValue :: W.Word16 }
+  deriving (Show, Eq, Ord, P.PrintfArg)
 
 -- | Interpreter internal state
 data Synacor = Synacor
@@ -21,7 +28,6 @@ data Synacor = Synacor
   , program :: Program
   } deriving Show
 
-type Program = V.Vector W.Word16
 
 data VirtualMachineState s
   = Halt
@@ -29,10 +35,19 @@ data VirtualMachineState s
   | PutChar Char s
   | GetChar (Char -> s)
   | Ok s
-  deriving (Functor)
 
-newtype Register = Register { getValue :: W.Word16 }
-  deriving (Show, Eq, Ord, P.PrintfArg)
+
+packLittleEndian :: W.Word8 -> W.Word8 -> W.Word16
+packLittleEndian b0 b1 = fromIntegral b0 .|. (fromIntegral b1 `shiftL` 8)
+
+
+mkProgram :: BS.ByteString -> Program
+mkProgram bs = V.fromList $ go (BS.unpack bs)
+  where
+    go [] = []
+    go (b0:b1:ws) = packLittleEndian b0 b1 : go ws
+    go (b0:ws) = packLittleEndian b0 0 : go ws
+
 
 initVM :: Program -> Synacor
 initVM program = Synacor
@@ -47,6 +62,12 @@ debug :: String -> b -> b
 debug _ = id
 -- debug = D.trace
 
+
+{- Executs the next opcode from the program. It takes as argument the current
+   state of the virtual machine, fetches the next opcode, runs it and then
+   return the new state of Synacor VM. The new state is wrapped into a
+   VirtualMachineState, which acts like a continuation.
+-}
 execNextOpCode :: Synacor -> VirtualMachineState Synacor
 execNextOpCode vm@Synacor{ program, mem, pos, stack }
   | pos < 0 || fromIntegral pos >= V.length program = Halt
@@ -56,6 +77,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
         -- halt: 0
         --   stop execution and terminate the program
         0 -> Halt
+
         -- set: 1 a b
         --   set register <a> to the value of <b>
         1 ->
@@ -63,6 +85,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 3
             , mem=M.insert r1 v2 mem
             }
+
         -- push: 2 a
         --   push <a> onto the stack
         2 ->
@@ -70,6 +93,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 2
             , stack=v1:stack
             }
+
         -- pop: 3 a
         --   remove the top element from the stack and write it into <a>; empty stack = error
         3 ->
@@ -81,6 +105,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
                 , mem=M.insert r1 top mem
                 , stack=tail stack
                 }
+
         -- eq: 4 a b c
         --   set <a> to 1 if <b> is equal to <c>; set it to 0 otherwise
         4 ->
@@ -88,6 +113,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 (if v2 == v3 then 1 else 0) mem
             }
+
         -- gt: 5 a b c
         --   set <a> to 1 if <b> is greater than <c>; set it to 0 otherwise
         5 ->
@@ -95,20 +121,24 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 (if v2 > v3 then 1 else 0) mem
             }
+
         -- jmp: 6 a
         --   jump to <a>
         6 ->
           debug (P.printf "jmp to a:%d" v1) $ Ok vm { pos=fromIntegral v1 }
+
         -- jt: 7 a b
         --   if <a> is nonzero, jump to <b>
         7 ->
           debug (P.printf "jt to b:%d if a:%d /= 0" v2 v1) $ Ok
             vm { pos=if v1 /= 0 then fromIntegral v2 else pos + 3 }
+
         -- jf: 8 a b
         --   if <a> is zero, jump to <b>
         8 ->
           debug (P.printf "jf to b:%d if a:%d == 0" v2 v1) $ Ok
             vm { pos=if v1 == 0 then fromIntegral v2 else pos + 3 }
+
         -- add: 9 a b c
         --   assign into <a> the sum of <b> and <c> (modulo 32768)
         9 ->
@@ -116,6 +146,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 ((v2 + v3) `mod` 32768) mem
             }
+
         -- mult: 10 a b c
         --   store into <a> the product of <b> and <c> (modulo 32768)
         10 ->
@@ -123,6 +154,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 ((v2 * v3) `mod` 32768) mem
             }
+
         -- mod: 11 a b c
         --   store into <a> the remainder of <b> divided by <c>
         11 ->
@@ -130,6 +162,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 (v2 `mod` v3) mem
             }
+
         -- and: 12 a b c
         --   stores into <a> the bitwise and of <b> and <c>
         12 ->
@@ -137,6 +170,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 (v2 .&. v3) mem
             }
+
         -- or: 13 a b c
         --   stores into <a> the bitwise or of <b> and <c>
         13 ->
@@ -144,6 +178,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 4
             , mem=M.insert r1 (v2 .|. v3) mem
             }
+
         -- not: 14 a b
         --   stores 15-bit bitwise inverse of <b> in <a>
         14 ->
@@ -151,6 +186,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 3
             , mem=M.insert r1 (complement v2 .&. 32767) mem
             }
+
         -- rmem: 15 a b
         --   read memory at address <b> and write it to <a>
         15 ->
@@ -158,6 +194,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 3
             , mem=M.insert r1 (program V.! fromIntegral v2) mem
             }
+
         -- wmem: 16 a b
         --   write the value from <b> into memory at address <a>
         16 ->
@@ -165,6 +202,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=pos + 3
             , program=program V.// [(fromIntegral v1, v2)]
             }
+
         -- call: 17 a
         --   write the address of the next instruction to the stack and jump to <a>
         17 ->
@@ -172,6 +210,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
             { pos=fromIntegral v1
             , stack=(fromIntegral pos + 2):stack
             }
+
         -- ret: 18
         --   remove the top element from the stack and jump to it; empty stack = halt
         18 ->
@@ -181,19 +220,25 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
               { pos=fromIntegral x
               , stack=xs
               }
+
         -- out: 19 a
         --   write the character represented by ascii code <a> to the terminal
         19 ->
           debug (P.printf "out a:%d" v1) $ PutChar
             (C.chr $ fromIntegral v1)
             vm { pos=pos + 2 }
+
         -- in: 20 a
-        --   read a character from the terminal and write its ascii code to <a>; it can be assumed that once input starts, it will continue until a newline is encountered; this means that you can safely read whole lines from the keyboard and trust that they will be fully read
+        --   read a character from the terminal and write its ascii code to <a>;
+        --   it can be assumed that once input starts, it will continue until a
+        --   newline is encountered; this means that you can safely read whole
+        --   lines from the keyboard and trust that they will be fully read
         20 ->
           debug (P.printf "in a:%d" r1) $ GetChar $ \chr -> vm
             { pos=pos + 2
             , mem=M.insert r1 (fromIntegral $ C.ord chr) mem
             }
+
         -- noop: 21
         --   no operation
         21 -> Ok vm { pos=pos + 1 }
@@ -216,12 +261,71 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
         then M.findWithDefault 0 r3 mem
         else getValue r3
 
+
 newtype Place = Place String
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+
+instance Show Place where
+  show (Place place) = place
 
 newtype Item = Item String
+  deriving (Eq, Ord)
+
+instance Show Item where
+  show (Item item) = item
+
+newtype Inventory = Inventory [Item]
   deriving (Show, Eq, Ord)
 
+{- A Frame represents a unique situation, or "moment" in the simulation. It is a
+   combination of a given place, a set of items available to pick-up, a set of
+   directions to go to as well as a given inventory of objects which could be
+   used in this situation. The goal of the simulation is to find the set of all
+   unique "Frames" of the game (meaning, explore it completely.)
+
+   A new Frame will be created each time some user input is required. The
+   description will be the text accumulated since the previous Frame.
+
+   TODO: We should include the text of the action as well? Or the next action
+   which will be performed as a field of the record.
+-}
+data Frame = Frame
+  { getDescription :: String
+  , getPlaces :: [Place]
+  , getItems :: [Item]
+  , getInventory :: Inventory
+  } deriving (Show, Eq, Ord)
+
+data Action =
+     Use Item
+   | Take Item
+   | Look Item
+   | Go Place
+
+instance Show Action where
+  show (Use item) = unwords ["use", show item]
+  show (Take item) = unwords ["take", show item]
+  show (Look item) = unwords ["look", show item]
+  show (Go place) = unwords ["go", show place]
+
+{- Given a Frame of the simulation, list all possible actions. -}
+listPossibleActions :: Frame -> ([Action], [Action])
+listPossibleActions frame = (mandatoryActions, choiceActions)
+  where
+    mandatoryActions = map Take items
+    choiceActions = concat
+      [ map Look items
+      , map Look inventory
+      , map Use items
+      , map Use inventory
+      , map Go places ]
+    places = getPlaces frame
+    items = getItems frame
+    (Inventory inventory) = getInventory frame
+
+{- Internal state of the parser. It is only used to hold intermediary data
+   structures as well as the current state of parsing.
+-}
 data Parser = Parser
   { isPlace :: Bool
   , isItem :: Bool
@@ -268,14 +372,12 @@ data Simulation = Simulation
   , input :: String       -- Input used when `GetChar` command is emitted
   } deriving Show
 
-{-
-  The simulation proceeds by exploring the game in a depth-first search way. It
-  will start at the first location of the game, and will try to explore all
-  possible exists, as well as use all possible objects found on the way.
--}
-simulate :: Program -> String
-simulate = reverse . acc . go start . initVM
+{- Depth-first search of the Synacor game -}
+simulate :: Program -> [Frame]
+simulate program = go start vm
   where
+    vm = initVM program
+
     -- Initial state of the simulation
     start = Simulation {
       acc = "",
@@ -357,15 +459,105 @@ run = go . initVM
           go (f chr)
         Ok s -> go s
 
-packLittleEndian :: W.Word8 -> W.Word8 -> W.Word16
-packLittleEndian b0 b1 = fromIntegral b0 .|. (fromIntegral b1 `shiftL` 8)
-
-mkProgram :: BS.ByteString -> Program
-mkProgram bs = V.fromList $ go (BS.unpack bs)
+runWithInput :: Program -> String -> IO ()
+runWithInput = go . initVM
   where
-    go [] = []
-    go (b0:b1:ws) = packLittleEndian b0 b1 : go ws
-    go (b0:ws) = packLittleEndian b0 0 : go ws
+    go :: Synacor -> String -> IO ()
+    go vm input =
+      case execNextOpCode vm of
+        Halt -> putStrLn "Program is exiting..."
+        Error err -> putStrLn $ "Program errored: " ++ show err
+        PutChar chr s -> putChar chr >> go s input
+        GetChar f ->
+          case input of
+            [] -> putStrLn "No more input, exiting..."
+            (x:xs) -> putChar x >> go (f x) xs
+        Ok s -> go s input
+
+{- runWithInputPure is the same as runWithInput but runs as a pure computation.
+  This was only used to check the performance of the evaluation given no
+  side-effect is performed.
+-}
+data Done = Done deriving Show
+
+runWithInputPure :: Program -> String -> Done
+runWithInputPure = go . initVM
+  where
+    go :: Synacor -> String -> Done
+    go vm input =
+      case execNextOpCode vm of
+        Halt -> Done
+        Error _ -> Done
+        PutChar _ s -> go s input
+        GetChar f ->
+          case input of
+            [] -> Done
+            (x:xs) -> go (f x) xs
+        Ok s -> go s input
+
+{- TODO: could run, simulate, runWithInput and runWithInputPure be implemented
+by the same generic function parameterized? -}
+
+instructions :: String
+instructions = unlines
+  [ "take tablet"
+  , "use tablet"
+  , "go doorway"
+  , "go north"
+  , "go north"
+  , "go bridge"
+  , "go continue"
+  , "go down"
+  , "go east"
+  , "take empty lantern"
+  , "go west"
+  , "go west"
+  , "go passage"
+  , "go ladder"
+  , "go west"
+  , "go north"
+  , "go south"
+  , "go north"
+  , "take can"
+  , "use can"
+  , "use lantern"
+  , "go west"
+  , "go west"
+  , "go south"
+  , "go north"
+  , "go west"
+  , "go ladder"
+  , "go darkness"
+  , "go continue"
+  , "go west"
+  , "go west"
+  , "go west"
+  , "go west"
+  , "go north"
+  , "take red coin"
+  , "go north"
+  , "go west"
+  , "take blue coin"
+  , "go up"
+  , "take shiny coin"
+  , "go down"
+  , "go east"
+  , "go east"
+  , "take concave coin"
+  , "go down"
+  , "take corroded coin"
+  , "go up"
+  , "go west"
+  , "use blue coin"
+  , "use red coin"
+  , "use shiny coin"
+  , "use concave coin"
+  , "use corroded coin"
+  , "go north"
+  , "take teleporter"
+  , "use teleporter"
+  , "take strange book"
+  , "look strange book" ]
 
 main :: IO ()
 main = do
@@ -376,5 +568,6 @@ main = do
       -- let program = V.fromList [9,32768,32769,4,19,32768]
       if BS.null program
          then putStrLn "Program is empty."
-         else putStrLn $ simulate $ mkProgram program
+         else putStrLn $ simulate (mkProgram program)
+         -- else runWithInput (mkProgram program) instructions -- simulate $ mkProgram program
     _ -> putStrLn "Expected one argument: path to program"

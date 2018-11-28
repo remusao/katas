@@ -23,12 +23,9 @@ executables:
     main:                vm.hs
     source-dirs:         ./
     ghc-options:
-    - -O2
-    - -Wall
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -O2
+      - -Wall
     dependencies:
-    - bytestring
-    - containers
-    - vector
+      - bytestring
+      - containers
+      - vector
