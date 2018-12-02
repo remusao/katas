@@ -1,4 +1,4 @@
-const lines = [
+const lines1 = [
   "xdmgyjkpruszabaqwficevtjeo",
   "xdmgybkgwuszlbaqwfichvtneo",
   "xdmgyjkpruszlbcwwfichvtndo",
@@ -261,32 +261,21 @@ const lines = [
 //   'wvxyz',
 // ];
 
-function mkNode() {
-  const node = [];
-  for (let i = 0; i < 27; i += 1) {
-    node.push(undefined);
-  }
-  return node;
-}
-
-function buildTrie(lines) {
-  const trie = mkNode();
+function solve(lines) {
+  const trie = new Array(27);
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     let node = trie;
     for (let j = 0; j < line.length; j += 1) {
       const c = line.charCodeAt(j) - 97;
       if (node[c] === undefined) {
-        node[c] = mkNode();
+        node[c] = new Array(27);
       }
       node = node[c];
     }
     node[26] = true;
   }
-  return trie;
-}
 
-function solve(trie, lines) {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
     const queue = [{ node: trie, index: 0, error: -1 }];
@@ -322,11 +311,81 @@ function solve(trie, lines) {
   return "";
 }
 
-const trie = buildTrie(lines);
-const t0 = Date.now();
-for (let i = 0; i < 100; i += 1) {
-  solve(trie, lines);
+function indexOfUniqueDiff(s1, s2) {
+  let indexOfDiff = -1;
+
+
+
+  return indexOfDiff;
 }
-const total = Date.now() - t0;
-console.log(total / 100);
-console.log(solve(trie, lines));
+
+function solve_loop(lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line1 = lines[i];
+    for (let j = 0; j < lines.length; j += 1) {
+      const line2 = lines[j];
+      let indexOfDiff = -1;
+      for (let k = 0; k < line1.length; k += 1) {
+        if (line1[k] !== line2[k]) {
+          // Only allow one diff
+          if (indexOfDiff !== -1) {
+            indexOfDiff = -1;
+            break;
+          }
+          indexOfDiff = k;
+        }
+      }
+
+      if (indexOfDiff !== -1) {
+        return line1.slice(0, indexOfDiff) + line1.slice(indexOfDiff + 1);
+      }
+    }
+  }
+}
+
+
+
+function randomLines(n) {
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const lines = [];
+  for (let i = 1; i < n; i += 1) {
+    let line = '';
+    for (let j = 0; j < 26; j += 1) {
+      line += letters[Math.floor(Math.random() * 26)];
+    }
+    lines.push(line);
+  }
+
+  // Make sure there is a duplicate in there
+  const line = lines[0];
+  lines.push(line.slice(0, 15) + 'u' + line.slice(16));
+
+  return lines;
+}
+
+const methods = [
+  ['linear', lines => lines.map(l => l.length)],
+  ['nlogn', lines => lines.slice().sort()],
+  ['trie', solve],
+  ['loops', solve_loop],
+];
+
+function main() {
+  for (let n = 2; n < 100000; n *= 2) {
+    console.log(`n=${n}`);
+    for (let i = 0; i < methods.length; i += 1) {
+      const [name, fn] = methods[i];
+      let total = 0.0;
+      for (let j = 0; j < 100; j += 1) {
+        const lines = randomLines(n);
+        const t0 = Date.now();
+        fn(lines);
+        total += (Date.now() - t0);
+      }
+      total /= 100;
+      console.log(`${name} ${total}ms (${total / n}/str)`);
+    }
+  }
+}
+
+main();
