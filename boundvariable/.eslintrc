@@ -1,0 +1,17 @@
+{
+    "extends": "airbnb",
+    "parser": "babel-eslint",
+    "env": {
+        "browser": false,
+        "commonjs": false,
+        "es6": true,
+        "mocha": false,
+        "node": true,
+        "webextensions": false,
+        "worker": false
+    },
+    "globals": {},
+    "plugins": [],
+    "rules": {},
+    "overrides": []
+}

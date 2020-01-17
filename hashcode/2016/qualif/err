@@ -1,0 +1,8 @@
+nrows 240
+ncols 400
+ndrones 20
+nturns 144612
+max_payload 200
+nproducts 1000
+nwarehouses 1
+nclients 800

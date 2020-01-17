@@ -1,0 +1,3 @@
+[console_scripts]
+hcfinal = hashcode.main:main
+

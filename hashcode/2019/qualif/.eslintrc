@@ -1,0 +1,8 @@
+{
+    "extends": "airbnb",
+    "rules": {
+        "no-console": "off"
+    },
+    "overrides": [
+    ]
+}

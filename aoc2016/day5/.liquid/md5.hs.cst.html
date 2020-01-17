@@ -1,0 +1,67 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<title>md5.hs</title>
+</head>
+<head>
+<link type='text/css' rel='stylesheet' href='liquid.css' />
+</head>
+
+<body>
+<hr>
+Put mouse over identifiers to see inferred types
+<pre><span class=hs-linenum> 1: </span><span class='hs-cpp'>#!</span> <span class='hs-varop'>/</span><span class='hs-varid'>usr</span><span class='hs-varop'>/</span><span class='hs-varid'>bin</span><span class='hs-varop'>/</span><span class='hs-varid'>env</span> <span class='hs-varid'>stack</span>
+<span class=hs-linenum> 2: </span><span class='hs-comment'>{-
+   stack --resolver lts-10.1 --install-ghc runghc
+    --package cryptohash-md5
+    --package bytestring
+-}</span>
+<span class=hs-linenum> 7: </span>
+<span class=hs-linenum> 8: </span><span class='hs-comment'>{-# LANGUAGE OverloadedStrings #-}</span>
+<span class=hs-linenum> 9: </span>
+<span class=hs-linenum>10: </span><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Crypto</span><span class='hs-varop'>.</span><span class='hs-conid'>Hash</span><span class='hs-varop'>.</span><span class='hs-conid'>MD5</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>C</span>
+<span class=hs-linenum>11: </span><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>B</span>
+<span class=hs-linenum>12: </span><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span><span class='hs-varop'>.</span><span class='hs-conid'>Char8</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>BC</span>
+<span class=hs-linenum>13: </span><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>List</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>L</span>
+<span class=hs-linenum>14: </span><span class='hs-keyword'>import</span> <span class='hs-keyword'>qualified</span> <span class='hs-conid'>Data</span><span class='hs-varop'>.</span><span class='hs-conid'>Word</span> <span class='hs-keyword'>as</span> <span class='hs-conid'>W</span>
+<span class=hs-linenum>15: </span>
+<span class=hs-linenum>16: </span><span class='hs-comment'>-- 0000 0000 0000 0000 0000 0000 0000</span>
+<span class=hs-linenum>17: </span><span class='hs-comment'>--                          ^ 6th ^ 7th</span>
+<span class=hs-linenum>18: </span><span class='hs-definition'>checkPrefix</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Bool</span>
+<span class=hs-linenum>19: </span><span class='hs-definition'>checkPrefix</span> <span class='hs-varid'>b</span>
+<span class=hs-linenum>20: </span>  <span class='hs-keyglyph'>|</span> <span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-varid'>index</span> <span class='hs-varid'>b</span> <span class='hs-num'>0</span> <span class='hs-varop'>==</span> <span class='hs-num'>0</span>
+<span class=hs-linenum>21: </span>  <span class='hs-layout'>,</span> <span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-varid'>index</span> <span class='hs-varid'>b</span> <span class='hs-num'>1</span> <span class='hs-varop'>==</span> <span class='hs-num'>0</span>
+<span class=hs-linenum>22: </span>  <span class='hs-layout'>,</span> <span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-varid'>index</span> <span class='hs-varid'>b</span> <span class='hs-num'>2</span> <span class='hs-varop'>&lt;</span> <span class='hs-num'>16</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>True</span>
+<span class=hs-linenum>23: </span>  <span class='hs-keyglyph'>|</span> <span class='hs-varid'>otherwise</span>        <span class='hs-keyglyph'>=</span> <span class='hs-conid'>False</span>
+<span class=hs-linenum>24: </span>
+<span class=hs-linenum>25: </span><span class='hs-definition'>seed</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span>
+<span class=hs-linenum>26: </span><span class='hs-definition'>seed</span> <span class='hs-keyglyph'>=</span> <span class='hs-str'>"abc"</span> <span class='hs-comment'>-- "ugkcyxxp"</span>
+<span class=hs-linenum>27: </span>
+<span class=hs-linenum>28: </span><span class='hs-definition'>ctx</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-conid'>Ctx</span>
+<span class=hs-linenum>29: </span><span class='hs-definition'>ctx</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-varid'>update</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-varid'>init</span> <span class='hs-varid'>seed</span>
+<span class=hs-linenum>30: </span>
+<span class=hs-linenum>31: </span><span class='hs-definition'>hashes</span> <span class='hs-keyglyph'>::</span> <span class='hs-keyglyph'>[</span><span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span><span class='hs-keyglyph'>]</span>
+<span class=hs-linenum>32: </span><span class='hs-definition'>hashes</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>go</span> <span class='hs-num'>0</span>
+<span class=hs-linenum>33: </span>  <span class='hs-keyword'>where</span>
+<span class=hs-linenum>34: </span>    <span class='hs-varid'>go</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>Int</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-keyglyph'>[</span><span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-conid'>ByteString</span><span class='hs-keyglyph'>]</span>
+<span class=hs-linenum>35: </span>    <span class='hs-varid'>go</span> <span class='hs-varid'>n</span> <span class='hs-keyglyph'>=</span>
+<span class=hs-linenum>36: </span>      <span class='hs-keyword'>let</span> <span class='hs-varid'>hash</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-varid'>finalize</span> <span class='hs-layout'>(</span><span class='hs-conid'>C</span><span class='hs-varop'>.</span><span class='hs-varid'>update</span> <span class='hs-varid'>ctx</span> <span class='hs-varop'>$</span> <span class='hs-conid'>BC</span><span class='hs-varop'>.</span><span class='hs-varid'>pack</span> <span class='hs-layout'>(</span><span class='hs-varid'>show</span> <span class='hs-varid'>n</span><span class='hs-layout'>)</span><span class='hs-layout'>)</span> <span class='hs-keyword'>in</span>
+<span class=hs-linenum>37: </span>        <span class='hs-keyword'>if</span> <span class='hs-varid'>checkPrefix</span> <span class='hs-varid'>hash</span>
+<span class=hs-linenum>38: </span>           <span class='hs-keyword'>then</span> <span class='hs-varid'>hash</span> <span class='hs-conop'>:</span> <span class='hs-varid'>go</span> <span class='hs-layout'>(</span><span class='hs-varid'>n</span> <span class='hs-varop'>+</span> <span class='hs-num'>1</span><span class='hs-layout'>)</span>
+<span class=hs-linenum>39: </span>           <span class='hs-keyword'>else</span> <span class='hs-varid'>go</span> <span class='hs-layout'>(</span><span class='hs-varid'>n</span> <span class='hs-varop'>+</span> <span class='hs-num'>1</span><span class='hs-layout'>)</span>
+<span class=hs-linenum>40: </span>
+<span class=hs-linenum>41: </span><span class='hs-definition'>toHex</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>W</span><span class='hs-varop'>.</span><span class='hs-conid'>Word8</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-conid'>Char</span>
+<span class=hs-linenum>42: </span><span class='hs-definition'>toHex</span> <span class='hs-num'>0</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'0'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>1</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'1'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>2</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'2'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>3</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'3'</span>
+<span class=hs-linenum>43: </span><span class='hs-definition'>toHex</span> <span class='hs-num'>4</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'4'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>5</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'5'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>6</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'6'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>7</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'7'</span>
+<span class=hs-linenum>44: </span><span class='hs-definition'>toHex</span> <span class='hs-num'>8</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'8'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>9</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'9'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>10</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'a'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>11</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'b'</span>
+<span class=hs-linenum>45: </span><span class='hs-definition'>toHex</span> <span class='hs-num'>12</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'c'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>13</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'d'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>14</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'e'</span><span class='hs-layout'>;</span> <span class='hs-varid'>toHex</span> <span class='hs-num'>15</span> <span class='hs-keyglyph'>=</span> <span class='hs-chr'>'f'</span>
+<span class=hs-linenum>46: </span>
+<span class=hs-linenum>47: </span><span class='hs-definition'>solve1</span><span class='hs-layout'>,</span> <span class='hs-varid'>solve2</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>String</span>
+<span class=hs-linenum>48: </span><span class='hs-definition'>solve1</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>L</span><span class='hs-varop'>.</span><span class='hs-varid'>map</span> <span class='hs-layout'>(</span><span class='hs-keyglyph'>\</span><span class='hs-varid'>h</span> <span class='hs-keyglyph'>-&gt;</span> <span class='hs-varid'>toHex</span> <span class='hs-varop'>$</span> <span class='hs-conid'>B</span><span class='hs-varop'>.</span><span class='hs-varid'>index</span> <span class='hs-varid'>h</span> <span class='hs-num'>2</span><span class='hs-layout'>)</span> <span class='hs-varop'>$</span> <span class='hs-conid'>L</span><span class='hs-varop'>.</span><span class='hs-varid'>take</span> <span class='hs-num'>1</span> <span class='hs-varid'>hashes</span>
+<span class=hs-linenum>49: </span><span class='hs-definition'>solve2</span> <span class='hs-keyglyph'>=</span> 
+<span class=hs-linenum>50: </span>
+<span class=hs-linenum>51: </span><span class='hs-definition'>main</span> <span class='hs-keyglyph'>::</span> <span class='hs-conid'>IO</span> <span class='hs-conid'>()</span>
+<span class=hs-linenum>52: </span><span class='hs-definition'>main</span> <span class='hs-keyglyph'>=</span> <span class='hs-varid'>print</span> <span class='hs-varid'>solve1</span>
+</pre>
+</body>
+</html>

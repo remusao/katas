@@ -1,0 +1,23 @@
+Metadata-Version: 1.1
+Name: hashcode-final
+Version: 0.0.1
+Summary: 42
+Home-page: UNKNOWN
+Author: Les Geeks d'Orléans
+Author-email: remi.berson@gmail.com
+License: Free of charge.
+
+Download-URL: https://bitbucket.org/remusao/hash-code
+Description: 
+        Changelog
+        =========
+        
+        Initial import
+        --------------
+        
+        - Bootstrapping repository (using sylhg-bootrep)
+        
+Platform: UNKNOWN
+Classifier: Environment :: Console
+Classifier: Programming Language :: Python :: 2.7
+Classifier: License :: Other/Proprietary License

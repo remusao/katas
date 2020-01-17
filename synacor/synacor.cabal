@@ -1,0 +1,36 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 1b9ac0ccc36706c26021dcc06c6d46c32d18ec5939200c0d65884df9c06a073d
+
+name:           synacor
+version:        0.1.0.0
+synopsis:       Solution to the Synacor challenge
+description:    Please see the README on Github at <https://github.com/remusao/katas#readme>
+homepage:       https://github.com/remusao/katas#readme
+bug-reports:    https://github.com/remusao/katas/issues
+author:         Rémi B.
+maintainer:     remi@cliqz.com
+copyright:      2017 Rémi B.
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+
+source-repository head
+  type: git
+  location: https://github.com/remusao/katas
+
+executable synacor
+  main-is: vm.hs
+  hs-source-dirs:
+      ./
+  ghc-options: -O2 -Wall
+  build-depends:
+      base >=4.7 && <5
+    , bytestring
+    , containers
+    , vector
+  other-modules:
+      Paths_synacor
+  default-language: Haskell2010

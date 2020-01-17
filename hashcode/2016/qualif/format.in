@@ -1,0 +1,11 @@
+r c D T max_load
+P
+P1 P2 P3 ... Pn
+W
+Wr Wc
+Wp1 Wp2 Wp3 ... Wpn
+...
+C
+Cr Cc
+Li
+Cp1 Cp2 ... Cpn

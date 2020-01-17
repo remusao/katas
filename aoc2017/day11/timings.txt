@@ -1,0 +1,2 @@
+1863
+python3 hexagon.py  45.16s user 0.02s system 99% cpu 45.221 total

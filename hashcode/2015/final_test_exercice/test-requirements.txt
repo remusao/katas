@@ -1,0 +1,6 @@
+flake8==2.1.0
+pylint==1.1.0
+pytest==2.6.4
+sphinx==1.2.2
+tox==1.7.0
+virtualenv==1.11.6

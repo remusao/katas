@@ -1,0 +1,7 @@
+Changelog
+=========
+
+Initial import
+--------------
+
+- Bootstrapping repository (using sylhg-bootrep)
