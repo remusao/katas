@@ -1,86 +1,68 @@
-fn solve1(numbers: &[usize; 2021]) {
-    for i in 0..=2020 {
-        if numbers[i] != 0 {
-            for j in i..=2020 {
-                if (i + j == 2020) && numbers[j] != 0 {
-                    println!("? {} {} {}", i, j, i * j);
-                }
-            }
-        }
-    }
-}
+use std::time::Instant;
 
-fn solve1_2(numbers: &[usize; 2021]) {
+fn solve1(numbers: Vec<usize>) -> Option<usize> {
+    let mut sorted: [bool; 2021] = [false; 2021];
+    for n in numbers.into_iter() {
+        sorted[n] = true;
+    }
+
     for i in 0..=2020 {
         let j = 2020 - i;
-        if numbers[i] != 0 && numbers[j] != 0 {
-            println!("? {} {} {}", i, j, i * j);
-            return;
+        if sorted[i] && sorted[j] {
+            return Some(i * j);
         }
     }
+
+    None
 }
 
-fn solve2(numbers: &[usize; 2021]) {
-    for i in 0..=2020 {
-        if numbers[i] != 0 {
-            for j in i..=2020 {
-                if (i + j) < 2020 && numbers[j] != 0 {
-                    for k in j..=2020 {
-                        if (i + j + k == 2020) && numbers[k] != 0 {
-                            println!("? {} {} {} {}", i, j, k, k * i * j);
-                        }
-                    }
-                }
-            }
+fn solve2(numbers: Vec<usize>) -> Option<usize> {
+    let mut sorted: [bool; 2021] = [false; 2021];
+    for n in numbers.into_iter() {
+        sorted[n] = true;
+    }
+
+    let mut non_zero: Vec<usize> = Vec::with_capacity(200);
+    for (i, &c) in sorted.iter().enumerate() {
+        if c {
+            non_zero.push(i);
         }
     }
-}
-
-fn solve2_2(numbers: &[usize; 2021]) {
-    let non_zero: Vec<usize> = numbers
-        .iter()
-        .enumerate()
-        .filter_map(|(i, v)| if *v == 0 { None } else { Some(i) })
-        .collect();
 
     for (index_i, i) in non_zero.iter().enumerate() {
-        for (index_j, j) in non_zero.iter().enumerate().skip(index_i) {
-            if i + j >= 2020 {
-                break;
-            }
-
-            for k in non_zero.iter().skip(index_j) {
-                let sum = i + j + k;
-                if sum > 2020 {
-                    break;
-                }
-
-                if sum == 2020 {
-                    println!("? {} {} {} {}", i, j, k, k * i * j);
-                    return;
-                }
+        for j in non_zero
+            .iter()
+            .skip(index_i + 1)
+            .take_while(|&j| j + i < 2020)
+        {
+            let k = 2020 - i - j;
+            if sorted[k] {
+                return Some(i * j * k);
             }
         }
     }
+
+    None
 }
 
 fn main() {
     // let raw = include_str!("./example.txt");
     let raw = include_str!("./input1.txt");
-    let mut numbers: [usize; 2021] = [0; 2021];
-    for number in raw.split('\n').filter_map(|line| {
-        let number = line.parse::<usize>().ok()?;
-        if number > 2020 {
-            None
-        } else {
-            Some(number)
-        }
-    }) {
-        numbers[number] += 1;
-    }
+    let numbers: Vec<usize> = raw
+        .split('\n')
+        .filter_map(|line| {
+            let number = line.parse::<usize>().ok()?;
+            if number > 2020 {
+                None
+            } else {
+                Some(number)
+            }
+        })
+        .collect();
 
-    solve1(&numbers);
-    solve1_2(&numbers);
-    solve2(&numbers);
-    solve2_2(&numbers);
+    println!("{:?}", solve2(numbers.clone()));
+    let start = Instant::now();
+    // solve1(numbers);
+    solve2(numbers);
+    println!("Elapsed: {}", start.elapsed().as_micros());
 }
