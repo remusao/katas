@@ -1,8 +1,8 @@
 use std::time::Instant;
 
-fn solve1(numbers: Vec<usize>) -> Option<usize> {
+fn solve1(numbers: &[usize]) -> Option<usize> {
     let mut sorted: [bool; 2021] = [false; 2021];
-    for n in numbers.into_iter() {
+    for &n in numbers.iter() {
         sorted[n] = true;
     }
 
@@ -16,9 +16,9 @@ fn solve1(numbers: Vec<usize>) -> Option<usize> {
     None
 }
 
-fn solve2(numbers: Vec<usize>) -> Option<usize> {
+fn solve2(numbers: &[usize]) -> Option<usize> {
     let mut sorted: [bool; 2021] = [false; 2021];
-    for n in numbers.into_iter() {
+    for &n in numbers.iter() {
         sorted[n] = true;
     }
 
@@ -30,12 +30,13 @@ fn solve2(numbers: Vec<usize>) -> Option<usize> {
     }
 
     for (index_i, i) in non_zero.iter().enumerate() {
-        for j in non_zero
-            .iter()
-            .skip(index_i + 1)
-            .take_while(|&j| j + i < 2020)
-        {
-            let k = 2020 - i - j;
+        for j in non_zero.iter().skip(index_i + 1) {
+            let i_plus_j = i + j;
+            if i_plus_j >= 2020 {
+                break;
+            }
+
+            let k = 2020 - i_plus_j;
             if sorted[k] {
                 return Some(i * j * k);
             }
@@ -60,9 +61,14 @@ fn main() {
         })
         .collect();
 
-    println!("{:?}", solve2(numbers.clone()));
+    println!("Part1: {:?}", solve1(&numbers));
+    println!("Part2: {:?}", solve2(&numbers));
+
     let start = Instant::now();
-    // solve1(numbers);
-    solve2(numbers);
-    println!("Elapsed: {}", start.elapsed().as_micros());
+    solve1(&numbers);
+    println!("Part1 took: {} nanoseconds", start.elapsed().as_nanos());
+
+    let start = Instant::now();
+    solve2(&numbers);
+    println!("Part2 took: {} nanoseconds", start.elapsed().as_nanos());
 }

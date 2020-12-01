@@ -1,0 +1,8 @@
+[build]
+rustflags = [
+  "-C", "target-cpu=native",
+  "-C", "link-arg=-fuse-ld=lld",
+  "-C", "embed-bitcode=no",
+  "-C", "opt-level=3",
+  "-C", "overflow-checks=off"
+]
