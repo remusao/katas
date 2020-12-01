@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 fn solve1(numbers: &[usize; 2021]) {
     for i in 0..=2020 {
         if numbers[i] != 0 {
@@ -8,6 +6,16 @@ fn solve1(numbers: &[usize; 2021]) {
                     println!("? {} {} {}", i, j, i * j);
                 }
             }
+        }
+    }
+}
+
+fn solve1_2(numbers: &[usize; 2021]) {
+    for i in 0..=2020 {
+        let j = 2020 - i;
+        if numbers[i] != 0 && numbers[j] != 0 {
+            println!("? {} {} {}", i, j, i * j);
+            return;
         }
     }
 }
@@ -71,9 +79,8 @@ fn main() {
         numbers[number] += 1;
     }
 
-    // solve1(&numbers);
-
-    let start = Instant::now();
+    solve1(&numbers);
+    solve1_2(&numbers);
+    solve2(&numbers);
     solve2_2(&numbers);
-    println!("Elapsed: {}", start.elapsed().as_micros());
 }
