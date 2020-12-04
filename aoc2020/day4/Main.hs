@@ -4,7 +4,6 @@
 
 module Main (main) where
 
-import Control.Applicative (many)
 import Control.Monad (guard)
 import Data.Char (isSpace)
 import Data.List (sort)
@@ -75,8 +74,7 @@ passports = fromMaybe [] . parse (sepBy1 passport (string "\n\n"))
 
         -- | (Hair Color) - a # followed by exactly six characters 0-9 or a-f.
       , field "hcl" Hcl do
-          s <- char '#' >> (many . choice $ [digit, asciiLower])
-          guard $ length s == 6
+          char '#' >> (count 6 . choice $ [digit, asciiLower])
 
         -- | (Eye Color) - exactly one of: amb, blu, brn, gry, grn, hzl, oth.
       , field "ecl" Ecl $ choice
@@ -91,8 +89,7 @@ passports = fromMaybe [] . parse (sepBy1 passport (string "\n\n"))
 
         -- | (Passport ID) - a nine-digit number, including leading zeroes.
       , field "pid" Pid do
-          s <- many digit
-          guard (length s == 9)
+          s <- count 9 digit
           case readMaybe s :: Maybe Int of
             Nothing -> pfail
             _ -> return ()

@@ -8,6 +8,7 @@ module Parser
   , asciiLower
   , char
   , choice
+  , count
   , digit
   , eof
   , get
@@ -196,6 +197,10 @@ munch p = do
 
 sepBy1 :: Parser a -> Parser sep -> Parser [a]
 sepBy1 p sep = M.liftM2 (:) p (A.many (sep >> p))
+
+
+count :: Int -> Parser a -> Parser [a]
+count n p = M.replicateM n p
 
 
 -- | Eval Parser 'p' against input String 's'.
