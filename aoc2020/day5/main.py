@@ -2,17 +2,9 @@ import itertools
 
 
 def get_seat_id(bp):
-    r = 0
-    for i, l in enumerate(bp[:7][::-1]):
-        if l == "B":
-            r += 2 ** i
-
-    c = 0
-    for i, l in enumerate(bp[7:][::-1]):
-        if l == "R":
-            c += 2 ** i
-
-    return r * 8 + c
+    row = sum(2 ** i for i, l in enumerate(bp[:7][::-1]) if l == "B")
+    col = sum(2 ** i for i, l in enumerate(bp[7:][::-1]) if l == "R")
+    return row * 8 + col
 
 
 def main():
