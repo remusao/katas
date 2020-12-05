@@ -1,12 +1,10 @@
-def get_seat_id(bp):
-    row = sum(2 ** i for i, l in enumerate(bp[:7][::-1]) if l == "B")
-    col = sum(2 ** i for i, l in enumerate(bp[7:][::-1]) if l == "R")
-    return row * 8 + col
-
-
 def main():
     with open("./input1.txt") as inputs:
-        ids = [get_seat_id(line.strip()) for line in inputs]
+        ids = [
+            8 * sum(2 ** i for i, l in enumerate(line[0:7][::-1]) if l == "B")
+            + sum(2 ** i for i, l in enumerate(line[7:10][::-1]) if l == "R")
+            for line in inputs.readlines()
+        ]
         min_id, max_id, sum_id = min(ids), max(ids), sum(ids)
 
         print("Part 1:", max_id)
