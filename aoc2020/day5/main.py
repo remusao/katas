@@ -1,6 +1,3 @@
-import itertools
-
-
 def get_seat_id(bp):
     row = sum(2 ** i for i, l in enumerate(bp[:7][::-1]) if l == "B")
     col = sum(2 ** i for i, l in enumerate(bp[7:][::-1]) if l == "R")
