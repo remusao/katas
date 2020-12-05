@@ -8,7 +8,6 @@ def main():
                         ord("F"): ord("0"),
                         ord("R"): ord("1"),
                         ord("L"): ord("0"),
-                        ord("\n"): None,
                     }
                 ),
                 2,
