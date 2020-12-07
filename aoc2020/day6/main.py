@@ -23,4 +23,5 @@ def solve2():
 
 
 if __name__ == "__main__":
+    solve1()
     solve2()
