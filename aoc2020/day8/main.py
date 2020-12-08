@@ -1,88 +1,59 @@
 
-def solve1():
+def parse(filename):
     with open('./input1.txt') as inputs:
-        instrs = []
+        program = []
         for line in inputs:
             instr, arg = line.strip().split()
-            instrs.append((instr, int(arg)))
+            program.append((instr, int(arg)))
+        return program
 
 
-        seen = set()
-        acc = 0
-        offset = 0
-        while True:
-            print('offset', offset)
-            if offset in seen:
-                print('res', acc)
-                break
-
-            instr, arg = instrs[offset]
-            print(instr, arg)
-            seen.add(offset)
-
-            if instr == 'acc':
-                acc += arg
-                offset += 1
-                print(acc)
-            elif instr == 'jmp':
-                offset += arg
-            else:
-                offset += 1
-
-
-def run(instrs):
+def run(program):
     seen = set()
     acc = 0
     offset = 0
     while True:
-        print('offset', offset)
         if offset in seen:
-            print('res', acc)
             break
 
-        if offset >= len(instrs):
+        if offset >= len(program):
             break
 
-        instr, arg = instrs[offset]
-        print(instr, arg)
+        instr, arg = program[offset]
         seen.add(offset)
 
         if instr == 'acc':
             acc += arg
             offset += 1
-            print(acc)
         elif instr == 'jmp':
             offset += arg
         else:
             offset += 1
 
-    return (offset == len(instrs), acc)
+    return (offset == len(program), acc)
+
+
+def solve1():
+    _, acc = run(parse('./example.txt'))
+    print('Part 1:', acc)
 
 
 def solve2():
-    with open('./input1.txt') as inputs:
-        instrs = []
-        for line in inputs:
-            instr, arg = line.strip().split()
-            instrs.append((instr, int(arg)))
+    program = parse('./example.txt')
+    for i, (instr, arg) in enumerate(program):
+        if instr == 'nop':
+            program[i] = ('jmp', arg)
+        elif instr == 'jmp':
+            program[i] = ('nop', arg)
 
-        for i, _ in enumerate(instrs):
-            instr, arg = instrs[i]
-            if instr == 'nop':
-                instrs[i] = ('jmp', arg)
-            elif instr == 'jmp':
-                instrs[i] = ('nop', arg)
+        success, acc = run(program)
+        if success:
+            print('Part 2:', acc)
+            break
 
-            success, acc = run(instrs)
-            if success:
-                print('>', acc)
-                break
-            instrs[i] = (instr, arg)
-
-
-
-
+        program[i] = (instr, arg)
 
 
 if __name__ == "__main__":
+    solve1()
     solve2()
