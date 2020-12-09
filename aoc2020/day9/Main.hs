@@ -1,11 +1,11 @@
+{-# LANGUAGE Safe #-}
 
 module Main (main) where
 
 import Data.List (sort, insert)
-import Debug.Trace
 
 -- | Poor man's queue with just minimal operations
-data Queue = Queue [Int] [Int] deriving Show
+data Queue = Queue [Int] [Int]
 
 -- | Push element at the end of the queue.
 push :: Int -> Queue -> Queue
@@ -29,6 +29,8 @@ solve1 preambleSize l = go (Queue preamble []) (sort preamble) rest
         let (q2, qs2) = pop q
          in go (push x qs2) (insert x . filter (/=q2) $ p) xs
 
+    -- | Try to find `x` and `y` which sum to `n` in linear time
+    --   Return `True` if found and `False` otherwise.
     f :: Int -> [Int] -> [Int] -> Bool
     f n (x:xs) (y:ys)
       | x == y = False
@@ -44,18 +46,20 @@ solve2 n l = go (head l) (0, 1) l (drop 1 l)
   where
     go :: Int -> (Int, Int) -> [Int] -> [Int] -> Int
     go acc (lo, hi) (x:xs) (y:ys)
-      | acc == n = let slice = take (hi - lo) (drop lo l) in maximum slice + minimum slice
+      | acc == n =
+        let slice = take (hi - lo) (drop lo l)
+         in maximum slice + minimum slice
       | otherwise =
         case compare acc n of
           LT -> go (acc + y) (lo, hi + 1) (x:xs) ys
           GT -> go (acc - x) (lo + 1, hi) xs (y:ys)
 
 
-
 main :: IO ()
 main = do
   inputs <- readFile "./src/input1.txt"
   let numbers = map read (lines inputs) :: [Int]
-  let n = solve1 25 numbers
-  print n
-  print $ solve2 n numbers
+  let p1 = solve1 25 numbers
+  let p2 = solve2 p1 numbers
+  putStrLn $ "Part 1: " ++ show p1
+  putStrLn $ "Part 2: " ++ show p2
