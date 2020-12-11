@@ -14,11 +14,25 @@ def solve1():
         print("Part 1:", counter[1] * counter[3])
 
 
+def cache(f):
+    memo = {}
+    @functools.wraps(f)
+    def cached(idx, current):
+        m = memo.get(idx)
+        if m is not None:
+            return m
+
+        m = f(idx, current)
+        memo[idx] = m
+        return m
+    return cached
+
+
 def solve2():
     with open("./input1.txt") as inputs:
         numbers = sorted(map(int, inputs))
 
-        @functools.cache
+        @cache
         def rec(idx, current):
             if idx == len(numbers):
                 return 1
