@@ -34,13 +34,9 @@ def parse_input(lines):
     for i, line in enumerate(lines):
         for j, x in enumerate(line):
             if x == "L":
-                c = i * max_j + j
-                empty[c] = 1
+                empty[i * max_j + j] = 1
                 coords.append((i, j))
-
-    ccoords = array.array("I", [0] * len(coords))
-    for n, (i, j) in enumerate(coords):
-        ccoords[n] = i * max_j + j
+    ccoords = [i * max_j + j for (i, j) in coords]
 
     return (max_i, max_j, empty, coords, ccoords)
 
@@ -84,83 +80,41 @@ def gen_next_part2(i, j, max_i, max_j, empty):
 
 
 def run(max_i, max_j, empty, coords, ccoords, neighbors, max_neighbors):
-    # t0 = time.time()
     precompneighbors = [[]] * (max_i * max_j)
     for (i, j), c in zip(coords, ccoords):
         precompneighbors[c] = neighbors(i=i, j=j, max_i=max_i, max_j=max_j, empty=empty)
-    # t1 = time.time()
-    # print('neighbors:', t1 - t0)
 
-    # t0 = time.time()
-    # p = sum(empty)
+    # At first iteration no cell has any occupied neighbor => count is 0
+    counts = empty
+    for c in ccoords:
+        counts[c] = 0
 
-    check_empty = 1
-    while True:
-        if check_empty == 1:
-            swaps = []
-            for c in ccoords:
-                if empty[c] == 1:
-                    for new in precompneighbors[c]:
-                        if empty[new] == 0:
-                            break
-                    else:
-                        swaps.append(c)
+    previously_updated = ccoords
+    update = 1  # First iteration is about adding
+    occupied = 0  # Total number of seats occupied
 
-            if not swaps:
-                break
+    while len(previously_updated) != 0:
+        to_update = (
+            [c for c in previously_updated if counts[c] == 0]
+            if update == 1
+            else [c for c in previously_updated if counts[c] >= max_neighbors]
+        )
 
-            check_empty = 0
-        else:
-            swaps = []
-            for c in ccoords:
-                if empty[c] == 0:
-                    s = 0
-                    for new in precompneighbors[c]:
-                        if empty[new] == 0:
-                            s += 1
-                        if s >= max_neighbors:
-                            swaps.append(c)
-                            break
-            check_empty = 1
+        if len(to_update) != 0:
+            for c in to_update:
+                for n in precompneighbors[c]:
+                    counts[n] += update
 
-        if not swaps:
-            break
-        for c in swaps:
-            empty[c] = check_empty
+            occupied += update * len(to_update)
 
-        # if new_empty:
-        #     p2 = len(new_empty)
-        # elif new_taken:
-        #     p2 = len(new_taken)
-        # print(p - p2)
-        # p = p2
+        previously_updated = to_update
+        update = -1 if update == 1 else 1
 
-        # if not (new_empty or new_taken):
-        #     break
-
-        # if new_empty and new_taken:
-        #     print('????')
-        # print('>>')
-        # print('empty:', len(new_empty))
-        # print('taken:', len(new_taken))
-        # for c in new_empty:
-        #     empty[c] = 1
-
-        # for c in new_taken:
-        #     empty[c] = 0
-
-        # check_empty = 0 if check_empty == 1 else 1
-
-    # t1 = time.time()
-    # print('loops:', t1 - t0)
-    return len(coords) - sum(empty)
+    return occupied
 
 
 def solve1(lines):
-    # t0 = time.time()
     max_i, max_j, empty, coords, ccoords = parse_input(lines)
-    # t1 = time.time()
-    # print('read:', t1 - t0)
     result = run(
         max_i=max_i,
         max_j=max_j,
@@ -188,10 +142,8 @@ def solve2(lines):
 
 
 def main():
-    with open('./input1.txt') as inputs:
+    with open("./input1.txt") as inputs:
         lines = [line.strip() for line in inputs]
-        # print(len(lines))
-        # print(len(lines[0]))
         for _ in range(10):
             solve1(lines)
             solve2(lines)
