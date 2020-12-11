@@ -67,34 +67,34 @@ def run(max_i, max_j, empty, neighbors, max_neighbors):
     taken = set()
 
     precompneighbors = {
-        (i, j): list(
-            neighbors(i=i, j=j, max_i=max_i, max_j=max_j, empty=empty)
-        )
+        (i, j): list(neighbors(i=i, j=j, max_i=max_i, max_j=max_j, empty=empty))
         for (i, j) in empty
     }
 
     while changed:
         changed = False
-        new_empty = set()
-        new_taken = set()
+
+        new_empty = []
+        new_taken = []
 
         for (i, j) in empty:
             if all(new not in taken for new in precompneighbors[(i, j)]):
                 changed = True
-                new_taken.add((i, j))
-            else:
-                new_empty.add((i, j))
+                new_taken.append((i, j))
 
         for (i, j) in taken:
             n = sum(new in taken for new in precompneighbors[(i, j)])
             if n >= max_neighbors:
                 changed = True
-                new_empty.add((i, j))
-            else:
-                new_taken.add((i, j))
+                new_empty.append((i, j))
 
-        taken = new_taken
-        empty = new_empty
+        for (i, j) in new_empty:
+            empty.add((i, j))
+            taken.remove((i, j))
+
+        for (i, j) in new_taken:
+            taken.add((i, j))
+            empty.remove((i, j))
 
     return len(taken)
 
