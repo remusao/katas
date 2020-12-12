@@ -1,27 +1,30 @@
 #!/usr/bin/env python
 
+import time
+
 
 def solve1(lines):
-    p = 0 + 0j
-    d = 1 + 0j
+    s = 0 + 0j
+    w = 1 + 0j
     for line in lines:
         nd = line[0]
         r = int(line[1:])
         if nd == "N":
-            p += r * 1j
+            s += r * 1j
         elif nd == "S":
-            p += r * -1j
+            s += r * -1j
         elif nd == "E":
-            p += r * 1
+            s += r * 1
         elif nd == "W":
-            p += r * -1
+            s += r * -1
         elif nd == "L":
-            d *= 1j ** (r // 90)
+            w *= 1j ** (r // 90)
         elif nd == "R":
-            d *= (-1j) ** (r // 90)
+            w *= (-1j) ** (r // 90)
         elif nd == "F":
-            p += r * d
-    print("Part 1:", int(abs(p.real) + abs(p.imag)))
+            s += r * w
+
+    return int(abs(s.real) + abs(s.imag))
 
 
 def solve2(instructions):
@@ -45,11 +48,20 @@ def solve2(instructions):
         elif nd == "F":
             s += r * w
 
-    print("Part 2:", int(abs(s.real) + abs(s.imag)))
+    return int(abs(s.real) + abs(s.imag))
 
 
 if __name__ == "__main__":
     with open("./input1.txt") as inputs:
         lines = list(inputs)
+
+        # Warm-up
+        for _ in range(100):
+            solve1(lines)
+            solve2(lines)
+
+        t0 = time.time()
         solve1(lines)
         solve2(lines)
+        t1 = time.time()
+        print("Time:", t1 - t0)
