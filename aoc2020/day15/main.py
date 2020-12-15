@@ -13,8 +13,7 @@ def run(numbers, stop):
     l, last_seen[n0] = last_seen[n0], i
 
     while i != stop:
-        n0 = 0 if l == 0 else i - l
-        i += 1
+        i, n0 = i + 1, 0 if l == 0 else i - l
         l, last_seen[n0] = last_seen[n0], i
 
     return n0
