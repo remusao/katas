@@ -39,12 +39,12 @@ def solve1(fields, _, nearby):
 
 def solve2(fields, ticket, nearby):
     # Filter invalid tickets
-    nearby = [ticket for ticket in nearby if all(value in fields for value in ticket)]
+    nearby = (ticket for ticket in nearby if all(value in fields for value in ticket))
 
     # Get initial set of possible fields for each columns (e.g. {'row', 'seat'})
     columns = list(
         enumerate(
-            (reduce(lambda a, b: a & b, (fields[i] for i in t)) for t in zip(*nearby))
+            (reduce(set.intersection, (fields[i] for i in t)) for t in zip(*nearby))
         )
     )
 
@@ -77,6 +77,11 @@ if __name__ == "__main__":
     with open("./input1.txt") as inputs:
         raw = inputs.read()
         fields, ticket, nearby = parse(raw)
+
+        # Warm-up (for Pypy measurements)
+        for _ in range(200):
+            solve1(fields, ticket, nearby)
+            solve2(fields, ticket, nearby)
 
         print("Part 1:", solve1(fields, ticket, nearby))
         print("Part 2:", solve2(fields, ticket, nearby))
