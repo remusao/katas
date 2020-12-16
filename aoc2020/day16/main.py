@@ -1,90 +1,88 @@
 #!/usr/bin/env python
 
+import time
 from functools import reduce
 from collections import defaultdict
 
 
-def solve1():
-    # NOTES:
-    # * Exactly two ranges per field.
-    # * Bounds seem small enough that we can do a reverse index.
-    with open("./input1.txt") as inputs:
-        fields, mine, nearby = inputs.read().strip().split("\n\n")
+def parse(raw):
+    fields, mine, nearby = raw.strip().split("\n\n")
 
-        rfx = defaultdict(set)
-        fx = {}
-        for field in fields.split("\n"):
-            name, ranges = field.split(": ")
-            rx = []
-            for r in ranges.split(" or "):
-                a, b = map(int, r.split("-"))
-                rx.append((a, b))
-                for i in range(a, b + 1):
-                    rfx[i].add(name)
-            fx[name] = rx
+    rfx = defaultdict(set)
+    fx = {}
+    for field in fields.split("\n"):
+        name, ranges = field.split(": ")
+        rx = []
+        for r in ranges.split(" or "):
+            a, b = map(int, r.split("-"))
+            rx.append((a, b))
+            for i in range(a, b + 1):
+                rfx[i].add(name)
+        fx[name] = rx
 
-        ticket = list(map(int, mine.split("\n")[-1].split(",")))
-        tickets = [list(map(int, t.split(","))) for t in nearby.split("\n")[1:]]
+    ticket = list(map(int, mine.split("\n")[-1].split(",")))
+    tickets = [list(map(int, t.split(","))) for t in nearby.split("\n")[1:]]
 
-        # print(rfx)
-        # print(fx)
-        # print(ticket)
-        # print(tickets)
-        res = 0
-        for t in tickets:
-            for i in t:
-                if i not in rfx:
-                    res += i
-
-        print("Part 1:", res)
+    return rfx, ticket, tickets
 
 
-def solve2():
-    with open("./input1.txt") as inputs:
-        fields, mine, nearby = inputs.read().strip().split("\n\n")
+def solve1(fields, _, nearby):
+    res = 0
 
-        rfx = defaultdict(set)
-        fx = {}
-        for field in fields.split("\n"):
-            name, ranges = field.split(": ")
-            rx = []
-            for r in ranges.split(" or "):
-                a, b = map(int, r.split("-"))
-                rx.append((a, b))
-                for i in range(a, b + 1):
-                    rfx[i].add(name)
-            fx[name] = rx
+    for ticket in nearby:
+        for value in ticket:
+            if value not in fields:
+                res += value
 
-        ticket = list(map(int, mine.split("\n")[-1].split(",")))
-        tickets = [list(map(int, t.split(","))) for t in nearby.split("\n")[1:]]
+    return res
 
-        # print(rfx)
-        # print(fx)
-        # print(ticket)
-        # print(tickets)
-        valid = [t for t in tickets if all(i in rfx for i in t)]
-        possible = list(
-            enumerate(
-                [reduce(lambda a, b: a & b, (rfx[i] for i in t)) for t in zip(*valid)]
-            )
+
+def solve2(fields, ticket, nearby):
+    # Filter invalid tickets
+    nearby = [ticket for ticket in nearby if all(value in fields for value in ticket)]
+
+    # Get initial set of possible fields for each columns (e.g. {'row', 'seat'})
+    columns = list(
+        enumerate(
+            (reduce(lambda a, b: a & b, (fields[i] for i in t)) for t in zip(*nearby))
+        )
+    )
+
+    res = 1
+
+    while columns:
+        # Find next column which has only one possible field
+        j, (i, classes) = next(
+            ((j, (i, p)) for j, (i, p) in enumerate(columns) if len(p) == 1)
         )
 
-        used = set()
-        res = 1
-        while possible:
-            i, classes = next((i, p) for i, p in possible if len(p) == 1)
-            name = next(iter(classes))
-            if name.startswith("departure"):
-                res *= ticket[i]
-            # print(i, classes)
-            used.update(classes)
-            # print('used', used)
-            possible = [(i, p - used) for i, p in possible if len(p - used) != 0]
-            # print(possible)
+        # Get name of field (Note: classes has only one value here)
+        name = next(iter(classes))
 
-        print("Part 2:", res)
+        # Keep track of final result
+        if name.startswith("departure"):
+            res *= ticket[i]
+
+        # Remove this column
+        columns.pop(j)
+
+        # Update all remaining columns by removing this field
+        for _, classes in columns:
+            classes.discard(name)
+
+    return res
 
 
 if __name__ == "__main__":
-    solve1()
-    solve2()
+    with open("./input1.txt") as inputs:
+        raw = inputs.read()
+        fields, ticket, nearby = parse(raw)
+
+        print("Part 1:", solve1(fields, ticket, nearby))
+        print("Part 2:", solve2(fields, ticket, nearby))
+
+        t0 = time.time()
+        solve1(fields, ticket, nearby)
+        solve2(fields, ticket, nearby)
+        t1 = time.time()
+        print("Total:", t1 - t0)
