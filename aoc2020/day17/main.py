@@ -7,22 +7,6 @@ import collections
 import itertools
 
 
-def cache(f):
-    memo = {}
-
-    @functools.wraps(f)
-    def cached(coordinates):
-        m = memo.get(coordinates)
-        if m is not None:
-            return m
-
-        m = f(coordinates)
-        memo[coordinates] = m
-        return m
-
-    return cached
-
-
 DELTAS = [
     [
         tuple(delta)
@@ -33,7 +17,7 @@ DELTAS = [
 ]
 
 
-@cache
+@functools.cache
 def neighbors(coordinates):
     n = len(coordinates)
     return [tuple(coordinates[i] + delta[i] for i in range(n)) for delta in DELTAS[n]]
@@ -53,27 +37,32 @@ def run(grid):
     for coordinates in grid:
         counts.update(neighbors(coordinates))
 
-    to_activate = []
-    to_deactivate = []
-
     for _ in range(6):
-        to_activate.clear()
-        to_deactivate.clear()
+        to_deactivate = {
+            coordinates
+            for coordinates, c in counts.items()
+            if c != 2 and c != 3 and coordinates in grid
+        }
 
-        for coordinates, c in counts.items():
-            if coordinates in grid:
-                if c != 2 and c != 3:
-                    to_deactivate.append(coordinates)
-            elif c == 3:
-                to_activate.append(coordinates)
+        to_activate = {
+            coordinates
+            for coordinates, c in counts.items()
+            if c == 3 and coordinates not in grid
+        }
 
-        for coordinates in to_activate:
-            grid.add(coordinates)
-            counts.update(neighbors(coordinates))
+        grid |= to_activate
+        counts.update(
+            itertools.chain.from_iterable(
+                neighbors(coordinates) for coordinates in to_activate
+            )
+        )
 
-        for coordinates in to_deactivate:
-            grid.remove(coordinates)
-            counts.subtract(neighbors(coordinates))
+        grid -= to_deactivate
+        counts.subtract(
+            itertools.chain.from_iterable(
+                neighbors(coordinates) for coordinates in to_deactivate
+            )
+        )
 
     return len(grid)
 
