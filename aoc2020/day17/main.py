@@ -23,18 +23,20 @@ def cache(f):
     return cached
 
 
-@cache
-def deltas(n):
-    return list(itertools.product(*[(-1, 0, 1)] * n))
+DELTAS = [
+    [
+        tuple(delta)
+        for delta in itertools.product(*([(-1, 0, 1)] * n))
+        if not all(d == 0 for d in delta)
+    ]
+    for n in range(0, 6)
+]
 
 
 @cache
 def neighbors(coordinates):
-    return [
-        tuple(map(sum, zip(coordinates, delta)))
-        for delta in deltas(len(coordinates))
-        if not all(d == 0 for d in delta)
-    ]
+    n = len(coordinates)
+    return [tuple(coordinates[i] + delta[i] for i in range(n)) for delta in DELTAS[n]]
 
 
 def parse_grid(lines, n):
@@ -50,7 +52,6 @@ def run(grid):
     counts = collections.Counter()
     for coordinates in grid:
         counts.update(neighbors(coordinates))
-
 
     to_activate = []
     to_deactivate = []
@@ -78,23 +79,23 @@ def run(grid):
 
 
 def main():
-    with open("./example.txt") as inputs:
+    with open("./input1.txt") as inputs:
         lines = list(inputs)
         grid3 = parse_grid(lines, 3)
         grid4 = parse_grid(lines, 4)
 
         # Warm-up
         for _ in range(5):
-            run(set(grid3))
-            run(set(grid4))
+            run(grid3.copy())
+            run(grid4.copy())
 
         # Display results
-        print("Part 1:", run(set(grid3)))
-        print("Part 2:", run(set(grid4)))
+        print("Part 1:", run(grid3.copy()))
+        print("Part 2:", run(grid4.copy()))
 
         t0 = time.time()
-        run(set(grid3))
-        run(set(grid4))
+        run(grid3.copy())
+        run(grid4.copy())
         t1 = time.time()
         print("Time:", t1 - t0)
 
@@ -103,7 +104,7 @@ def main():
             t0 = time.time()
             result = run(parse_grid(lines, n))
             t1 = time.time()
-            print(f'n={n}, result={result}, total={t1 - t0}')
+            print(f"n={n}, result={result}, total={t1 - t0}")
 
 
 if __name__ == "__main__":
