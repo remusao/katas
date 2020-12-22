@@ -4,7 +4,7 @@ def rec(d1, d2):
     seen = set()
     while d1 and d2:
         # Keep track of seen decks
-        t = tuple(d1) + ((),) + tuple(d2)
+        t = f'{d1}:{d2}'
         if t in seen:
             return 1, d1, d2
         seen.add(t)
