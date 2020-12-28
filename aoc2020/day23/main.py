@@ -1,115 +1,95 @@
 #!/usr/bin/env python
 
-from collections.abc import MutableSequence
+import array
+import time
 
 
-class Node(object):
-    __slots__ = "value", "next_node"
-
-    def __init__(self, value, next_node):
-        self.value = value
-        self.next_node = next_node
-
-
-def lllast(head):
-    last = head
-    for node in lliter(head):
-        last = node
-    return last
-
-
-def lliter(head):
-    seen = set()
-    while head not in seen:
-        yield head
-        seen.add(head)
-        head = head.next_node
-
-
-def lllist(head):
-    return [node.value for node in lliter(head)]
-
-
-def lltuple(head):
-    return tuple(node.value for node in lliter(head))
-
-
-def llprint(head):
-    print("llist::", llrepr(head))
-
-
-def llrepr(head):
-    return repr(lllist(head))
-
-
-def llcreate(arr):
-    # Create all nodes at once
-    memo = [Node(cup, None) for cup in range(len(arr) + 1)]
-
-    # Create links
-    head = memo[arr[0]]
+def llcreate(arr, number_of_cups):
+    nexts = array.array("I", [0] * (number_of_cups + 1))
+    head = arr[0]
     prev = head
-    for value in arr[1:]:
-        node = memo[value]
-        prev.next_node = node
-        prev = node
-    prev.next_node = head
-    return head, memo
+    for cup in arr[1:]:
+        nexts[prev] = cup
+        prev = cup
+
+    if number_of_cups > len(arr):
+        nexts[prev] = len(arr) + 1
+        for cup in range(len(arr) + 1, number_of_cups):
+            nexts[cup] = cup + 1
+        prev = number_of_cups
+
+    nexts[prev] = head
+
+    return head, nexts
 
 
-def llslice(head, n):
-    nextn = head.next_node
-    current = nextn
-    for _ in range(n - 1):
-        current = current.next_node
-    head.next_node = current.next_node
-    current.next_node = nextn  # Make circular
-    return nextn
-
-
-def run(cups, n):
-    # Create circular linked list
-    current, memo = llcreate(cups)
-    maxi = len(cups)
+def run(cups, number_of_cups, n):
+    current, nexts = llcreate(cups, number_of_cups)
+    maxi = len(nexts) - 1
 
     for _ in range(n):
-        # Remove three next after `current`
-        next3 = llslice(current, 3)
-        tnext3 = lltuple(next3)
+        next1 = nexts[current]
+        next2 = nexts[next1]
+        next3 = nexts[next2]
 
-        # Find destination node
-        destination = current.value - 1
-        if destination == 0:
-            destination = maxi
+        destination = current
+        while (
+            destination == next1
+            or destination == next2
+            or destination == next3
+            or destination == current
+        ):
+            destination = destination - 1 if destination != 1 else maxi
 
-        while destination in tnext3:
-            destination -= 1
-            if destination == 0:
-                destination = maxi
+        nexts[current], nexts[next3], nexts[destination] = (
+            nexts[next3],
+            nexts[destination],
+            next1,
+        )
 
-        destination_node = memo[destination]
+        current = nexts[current]
 
-        # Insert 3 removed elements back
-        lllast(next3).next_node = destination_node.next_node
-        destination_node.next_node = next3
-        current = current.next_node
-
-    return memo[1]
+    return nexts
 
 
 def solve1(cups):
-    return "".join([str(cup) for cup in lllist(run(cups, 100))[1:]])
+    nexts = run(cups=cups, number_of_cups=len(cups), n=100)
+
+    result = chr(nexts[1] + 48)
+    current = nexts[nexts[1]]
+    while current != 1:
+        result += chr(current + 48)
+        current = nexts[current]
+    return result
 
 
 def solve2(cups):
-    head1 = run(cups + list(range(10, 1000001)), 10000000)
-    n1 = head1.next_node.value
-    n2 = head1.next_node.next_node.value
-    return n1 * n2
+    nexts = run(cups=cups, number_of_cups=1000000, n=10000000)
+    n1 = nexts[1]
+    return n1 * nexts[n1]
+
+
+def main():
+    example = [3, 8, 9, 1, 2, 5, 4, 6, 7]
+    input1 = [3, 9, 4, 6, 1, 8, 5, 2, 7]
+
+    t0 = time.time()
+    print("Part 1:", solve1(input1))
+    print("Part 2:", solve2(input1))
+    t1 = time.time()
+    print("Pre-warmup:", t1 - t0)
+
+    # Warm-up
+    for _ in range(10):
+        solve1(input1)
+        solve2(input1)
+
+    t0 = time.time()
+    solve1(input1)
+    solve2(input1)
+    t1 = time.time()
+    print("Time:", t1 - t0)
 
 
 if __name__ == "__main__":
-    example = [3, 8, 9, 1, 2, 5, 4, 6, 7]
-    input1 = [3, 9, 4, 6, 1, 8, 5, 2, 7]
-    print("Part 1:", solve1(input1))
-    print("Part 2:", solve2(input1))
+    main()
