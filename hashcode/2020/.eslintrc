@@ -1,0 +1,21 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "airbnb",
+    "prettier"
+  ],
+  "env": {
+    "commonjs": true,
+    "node": true,
+    "es6": true
+  },
+  "rules": {
+    "no-console": "off",
+    "no-unused-vars": "off",
+    "no-plusplus": "off",
+    "no-continue": "off",
+    "no-param-reassign": "off",
+    "no-constant-condition": "off",
+    "no-restricted-syntax": "off"
+  }
+}
