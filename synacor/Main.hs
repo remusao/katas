@@ -1,20 +1,23 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE ImportQualifiedPost #-}
+
+module Main (main) where
 
 import Data.Bits ((.&.), (.|.), shiftL, complement)
-import qualified Data.ByteString as BS
-import qualified Data.Char as C
-import qualified Data.List as L
-import qualified Data.Map.Strict as M
-import qualified Data.Vector.Unboxed as V
-import qualified Data.Word as W
-import qualified System.Environment as Env
-import qualified Text.Printf as P
+import Data.ByteString qualified as BS
+import Data.Char qualified as C
+import Data.List qualified as L
+import Data.Map.Strict qualified as M
+import Data.Array.Unboxed qualified as A
+import Data.Word qualified as W
+import System.Environment qualified as Env
+import Text.Printf qualified as P
 -- import qualified Debug.Trace as D
 
 
-type Program = V.Vector W.Word16
+type Program = A.UArray Int W.Word16
 
 
 newtype Register = Register { getValue :: W.Word16 }
@@ -42,8 +45,10 @@ packLittleEndian b0 b1 = fromIntegral b0 .|. (fromIntegral b1 `shiftL` 8)
 
 
 mkProgram :: BS.ByteString -> Program
-mkProgram bs = V.fromList $ go (BS.unpack bs)
+mkProgram bs = array
   where
+    array = A.listArray (0, length list) list
+    list = go (BS.unpack bs)
     go [] = []
     go (b0:b1:ws) = packLittleEndian b0 b1 : go ws
     go (b0:ws) = packLittleEndian b0 0 : go ws
@@ -70,7 +75,7 @@ debug _ = id
 -}
 execNextOpCode :: Synacor -> VirtualMachineState Synacor
 execNextOpCode vm@Synacor{ program, mem, pos, stack }
-  | pos < 0 || fromIntegral pos >= V.length program = Halt
+  | pos < 0 || fromIntegral pos >= snd (A.bounds program) = Halt
   | otherwise =
     debug (P.printf "Interpreting opcode %d" opcode) $
       case opcode of
@@ -192,7 +197,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
         15 ->
           debug (P.printf "rmem a:%d = b:%d" r1 v2) $ Ok vm
             { pos=pos + 3
-            , mem=M.insert r1 (program V.! fromIntegral v2) mem
+            , mem=M.insert r1 (program A.! fromIntegral v2) mem
             }
 
         -- wmem: 16 a b
@@ -200,7 +205,7 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
         16 ->
           debug (P.printf "wmem program[a:%d] = b:%d" v1 v2) $ Ok vm
             { pos=pos + 3
-            , program=program V.// [(fromIntegral v1, v2)]
+            , program=program A.// [(fromIntegral v1, v2)]
             }
 
         -- call: 17 a
@@ -244,10 +249,10 @@ execNextOpCode vm@Synacor{ program, mem, pos, stack }
         21 -> Ok vm { pos=pos + 1 }
         o -> Error $ "Unknown opcode: " ++ show o
   where
-    opcode = program V.! pos
-    r1 = Register $ program V.! (pos + 1)
-    r2 = Register $ program V.! (pos + 2)
-    r3 = Register $ program V.! (pos + 3)
+    opcode = program A.! pos
+    r1 = Register $ program A.! (pos + 1)
+    r2 = Register $ program A.! (pos + 2)
+    r3 = Register $ program A.! (pos + 3)
     v1 =
       if getValue r1 >= 32768
         then M.findWithDefault 0 r1 mem
@@ -373,76 +378,76 @@ data Simulation = Simulation
   } deriving Show
 
 {- Depth-first search of the Synacor game -}
-simulate :: Program -> [Frame]
-simulate program = go start vm
-  where
-    vm = initVM program
-
-    -- Initial state of the simulation
-    start = Simulation {
-      acc = "",
-      input = "",
-      past = []
-    }
-
-    -- Sequentially feed different inputs to the same simulation state,
-    -- accumulating both visited places (to not visit several times the same
-    -- place) and output of the simulation.
-    explore :: Synacor -> Simulation -> [String] -> Simulation
-    explore vm = goExplore
-      where
-        goExplore :: Simulation -> [String] -> Simulation
-        goExplore s [] = s
-        goExplore s (x:xs) =
-          let newState = go s {
-            acc = "",
-            input = x
-          } vm
-          in goExplore s{
-            acc = acc s ++ acc newState,
-            past = L.nub $ past s ++ past newState } xs
-
-    -- Recursively explore the game, starting at `start` state.
-    go :: Simulation -> Synacor -> Simulation
-    go s@Simulation{ acc, input, past } vm =
-      case execNextOpCode vm of
-        Halt -> s
-        Error err -> s{ acc = acc ++ ">>Program errored: " ++ show err ++ "<<" }
-        Ok vm2 -> go s vm2
-        PutChar chr vm2 -> go s{ acc = chr : acc } vm2
-
-        -- When a char is requested by the program, there are two situations to
-        -- handle:
-        -- 1. Either there is at least one char available in `input`, in which
-        -- case we feed it to the simulation and continue the execution.
-        -- 2. Or there is none, in which case we process the accumulated output
-        -- of the program `acc` and extract possible exits and objects to
-        -- pick-up. We then continue the exploration using all the possible
-        -- valid actions.
-        GetChar f ->
-          case input of
-            (c:cs) -> go s { acc = c : acc, input = cs } (f c)
-            [] ->
-              let
-                (items, inv, places ) = extractActions (reverse acc)
-                takeItems = L.unlines ["take " ++ i | (Item i) <- items]
-              in
-                if acc `L.elem` past
-                  then s -- Back to a previously explored place
-                  else
-                    -- Recursively explore the game, starting by picking all
-                    -- available object, then following each available path.
-                    -- If there are some objects in the inventory, try to
-                    -- use them as well before moving to the next location.
-                    explore vm s{ past = acc:past } $ [
-                      takeItems ++ "inv\n" ++ "go " ++ p ++ "\n"
-                      | (Place p) <- places
-                    ] ++ [
-                      takeItems ++ ("use " ++ i ++ "\n") ++ "inv\n" ++ "go " ++ p ++ "\n"
-                      | let allItems = L.sort $ items ++ inv,
-                      (Item i) <- allItems,
-                      (Place p) <- places
-                    ]
+-- simulate :: Program -> [Frame]
+-- simulate program = go start vm
+--   where
+--     vm = initVM program
+--
+--     -- Initial state of the simulation
+--     start = Simulation {
+--       acc = "",
+--       input = "",
+--       past = []
+--     }
+--
+--     -- Sequentially feed different inputs to the same simulation state,
+--     -- accumulating both visited places (to not visit several times the same
+--     -- place) and output of the simulation.
+--     explore :: Synacor -> Simulation -> [String] -> Simulation
+--     explore vm = goExplore
+--       where
+--         goExplore :: Simulation -> [String] -> Simulation
+--         goExplore s [] = s
+--         goExplore s (x:xs) =
+--           let newState = go s {
+--             acc = "",
+--             input = x
+--           } vm
+--           in goExplore s{
+--             acc = acc s ++ acc newState,
+--             past = L.nub $ past s ++ past newState } xs
+--
+--     -- Recursively explore the game, starting at `start` state.
+--     go :: Simulation -> Synacor -> Simulation
+--     go s@Simulation{ acc, input, past } vm =
+--       case execNextOpCode vm of
+--         Halt -> s
+--         Error err -> s{ acc = acc ++ ">>Program errored: " ++ show err ++ "<<" }
+--         Ok vm2 -> go s vm2
+--         PutChar chr vm2 -> go s{ acc = chr : acc } vm2
+--
+--         -- When a char is requested by the program, there are two situations to
+--         -- handle:
+--         -- 1. Either there is at least one char available in `input`, in which
+--         -- case we feed it to the simulation and continue the execution.
+--         -- 2. Or there is none, in which case we process the accumulated output
+--         -- of the program `acc` and extract possible exits and objects to
+--         -- pick-up. We then continue the exploration using all the possible
+--         -- valid actions.
+--         GetChar f ->
+--           case input of
+--             (c:cs) -> go s { acc = c : acc, input = cs } (f c)
+--             [] ->
+--               let
+--                 (items, inv, places ) = extractActions (reverse acc)
+--                 takeItems = L.unlines ["take " ++ i | (Item i) <- items]
+--               in
+--                 if acc `L.elem` past
+--                   then s -- Back to a previously explored place
+--                   else
+--                     -- Recursively explore the game, starting by picking all
+--                     -- available object, then following each available path.
+--                     -- If there are some objects in the inventory, try to
+--                     -- use them as well before moving to the next location.
+--                     explore vm s{ past = acc:past } $ [
+--                       takeItems ++ "inv\n" ++ "go " ++ p ++ "\n"
+--                       | (Place p) <- places
+--                     ] ++ [
+--                       takeItems ++ ("use " ++ i ++ "\n") ++ "inv\n" ++ "go " ++ p ++ "\n"
+--                       | let allItems = L.sort $ items ++ inv,
+--                       (Item i) <- allItems,
+--                       (Place p) <- places
+--                     ]
 
 -- | Execute one instruction
 run :: Program -> IO ()
@@ -498,67 +503,6 @@ runWithInputPure = go . initVM
 {- TODO: could run, simulate, runWithInput and runWithInputPure be implemented
 by the same generic function parameterized? -}
 
-instructions :: String
-instructions = unlines
-  [ "take tablet"
-  , "use tablet"
-  , "go doorway"
-  , "go north"
-  , "go north"
-  , "go bridge"
-  , "go continue"
-  , "go down"
-  , "go east"
-  , "take empty lantern"
-  , "go west"
-  , "go west"
-  , "go passage"
-  , "go ladder"
-  , "go west"
-  , "go north"
-  , "go south"
-  , "go north"
-  , "take can"
-  , "use can"
-  , "use lantern"
-  , "go west"
-  , "go west"
-  , "go south"
-  , "go north"
-  , "go west"
-  , "go ladder"
-  , "go darkness"
-  , "go continue"
-  , "go west"
-  , "go west"
-  , "go west"
-  , "go west"
-  , "go north"
-  , "take red coin"
-  , "go north"
-  , "go west"
-  , "take blue coin"
-  , "go up"
-  , "take shiny coin"
-  , "go down"
-  , "go east"
-  , "go east"
-  , "take concave coin"
-  , "go down"
-  , "take corroded coin"
-  , "go up"
-  , "go west"
-  , "use blue coin"
-  , "use red coin"
-  , "use shiny coin"
-  , "use concave coin"
-  , "use corroded coin"
-  , "go north"
-  , "take teleporter"
-  , "use teleporter"
-  , "take strange book"
-  , "look strange book" ]
-
 main :: IO ()
 main = do
   args <- Env.getArgs
@@ -568,6 +512,7 @@ main = do
       -- let program = V.fromList [9,32768,32769,4,19,32768]
       if BS.null program
          then putStrLn "Program is empty."
-         else putStrLn $ simulate (mkProgram program)
+         -- else putStrLn $ simulate (mkProgram program)
          -- else runWithInput (mkProgram program) instructions -- simulate $ mkProgram program
+         else run (mkProgram program)
     _ -> putStrLn "Expected one argument: path to program"
